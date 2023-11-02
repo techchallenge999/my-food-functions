@@ -7,23 +7,20 @@ from passlib.context import CryptContext
 import redis
 
 
-PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
+PWD_CONTEXT = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-ACCESS_TOKEN_EXPIRE_SECONDS = 60 * ACCESS_TOKEN_EXPIRE_MINUTES
+ACCESS_TOKEN_EXPIRE_SECONDS = 3600
 ALGORITHM = "HS256"
 JWT_SECRET = "JWT_SECRET"
 
 
 def lambda_handler(event, context):
-    body = event["body"]
-
-    if not body:
+    if not event:
         value_dict = {"is_admin": False, "uuid": None}
     else:
-        cpf = body["cpf"]
-        value = redis.Redis(host=os.environ["REDIS_URL"], port=6379, db=0).get(f"cpf:{cpf}")
+        value = redis.Redis(host=os.environ["REDIS_URL"], port=6379, db=0).get(f'cpf:{event["cpf"]}')
 
-        if not (value and PWD_CONTEXT.verify(body["password"], (value_dict := json.loads(value))["password"])):
+        if not (value and PWD_CONTEXT.verify(event["password"], (value_dict := json.loads(value))["password"])):
             return {"statusCode": 401}
 
         del value_dict["password"]
